@@ -22,27 +22,35 @@ void setup() {
   Serial.begin(115200);
   pinMode(buzzPin, OUTPUT);
   pinMode(IRpin, INPUT);
+
   xBinarySemaphore = xSemaphoreCreateBinary();
-  xSemaphoreGive(xBinarySemaphore);
+  xSemaphoreGive(xBinarySemaphore); // Set binary semaphore = 0 agar scheduling dapat berjalan di awal
+
+  // Pembuatan Task RTOS dengan prioritas dimana angka terbesar memiliki prioritas lebih dahulu
   xTaskCreate(readFire, "Deteksi Api", 128, NULL, 2, NULL);
   xTaskCreate(showLCD, "Show LCD", 128, NULL, 2, NULL);
   xTaskCreate(buzzTrig, "Trigger Buzzer", 128, NULL, 1, NULL);
+
   vTaskStartScheduler();
 }
 
+// Task mengambil data dari fire sensor
 void readFire(void *pvParameters){
   for(;;){
-    IRsens = analogRead(IRpin);
+    IRsens = analogRead(IRpin); // mengambil data dari sensor
     vTaskDelay(1);
   }
 }
 
+// Task menampilkan tulisan ke LCD
 void showLCD(void *pvParameters){
   for(;;){
-    xSemaphoreTake(xBinarySemaphore,portMAX_DELAY);
+
+    xSemaphoreTake(xBinarySemaphore, portMAX_DELAY); // Mengambil binary semaphore sehingga akan menjalankan program pada task ini tanpa interupsi sampai give selanjutnya
     lcd.init();
     lcd.backlight();
-    if(IRsens < 1000){
+    
+    if(IRsens < 1000){ // Pengkondisian untuk tampilan LCD
       lcd.setCursor(0,0);
       lcd.print("Api");
       lcd.setCursor(0,1);
@@ -53,14 +61,15 @@ void showLCD(void *pvParameters){
       lcd.setCursor(0,1);
       lcd.print("Terdeteksi");
     }
-    xSemaphoreGive(xBinarySemaphore);
+    xSemaphoreGive(xBinarySemaphore); // give binary semaphore
     vTaskDelay(1);
   }
 }
 
+// Task membunyikan buzzer
 void buzzTrig(void *pvParameters){
   for(;;){
-    xSemaphoreTake(xBinarySemaphore,portMAX_DELAY);
+    xSemaphoreTake(xBinarySemaphore, portMAX_DELAY); // Mengambil binary semaphore sehingga akan menjalankan program pada task ini tanpa interupsi sampai give selanjutnya
     if(IRsens < 1000){
       digitalWrite(buzzPin, HIGH);
       delay(200);
@@ -69,7 +78,7 @@ void buzzTrig(void *pvParameters){
     }else{
       digitalWrite(buzzPin, LOW);
     }
-    xSemaphoreGive(xBinarySemaphore);
+    xSemaphoreGive(xBinarySemaphore); // give binary semaphore
   }
 }
 
